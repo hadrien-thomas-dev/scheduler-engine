@@ -1,10 +1,9 @@
-name: Scheduler Engine CI
+name: Merge request
 
 on:
-  pull_request:
+  push:
     branches:
       - main
-    types: [ opened, reopened, synchronize ]
 
 jobs:
   install:
@@ -23,6 +22,7 @@ jobs:
           key: modules-${{ hashFiles('package-lock.json') }}
       - name: Install packages
         run: npm ci
+
   lint:
     name: Linting
     needs: [ install ]
@@ -40,6 +40,7 @@ jobs:
           key: modules-${{ hashFiles('package-lock.json') }}
       - name: Linting
         run: npm run lint
+
   test:
     name: Tests
     needs: [ install, lint ]
@@ -57,3 +58,32 @@ jobs:
           key: modules-${{ hashFiles('package-lock.json') }}
       - name: Mutation testing
         run: npm run testm
+
+  deploy:
+    needs: [ install, lint, test ]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Setup .npmrc file to publish to npm
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          registry-url: 'https://registry.npmjs.org'
+      - name: Restore cache
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: ./node_modules
+          key: modules-${{ hashFiles('package-lock.json') }}
+      - name: Build
+        run: npm run 
+      - name: Semantic release
+        run: npx semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
