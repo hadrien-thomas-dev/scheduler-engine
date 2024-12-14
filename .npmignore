@@ -1,0 +1,15 @@
+src/
+
+.github/
+.stryker-tmp/
+coverage/
+node_modules/
+reports/
+
+.gitignore
+.npmignore
+*.config.js
+*.config.ts
+*.config.json
+tsconfig.json
+*.tgz
