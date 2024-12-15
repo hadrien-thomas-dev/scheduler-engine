@@ -103,11 +103,6 @@ jobs:
             https://api.github.com/app/installations/${{ secrets.APP_SCHEDULER_ENGINE_INSTALLATION_ID }}/access_tokens | jq -r .token)
 
           echo "token=$token" >> $GITHUB_ENV
-      - name: Configure Git for App Scheduler Engine
-        run: |
-          git config --global user.name "GitHub App Scheduler Engine"
-          git config --global user.email "github-app-scheduler-engine@example.com"
-          git remote set-url origin https://x-access-token:${{ env.token }}@github.com/${{ github.repository }}
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -115,19 +110,24 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          registry-url: 'https://registry.npmjs.org'
+          registry-url: 'https://registry.npmjs.org'      
+      - name: Configure Git for App Scheduler Engine
+        run: |
+          git config --global user.name "GitHub App Scheduler Engine"
+          git config --global user.email "github-app-scheduler-engine@example.com"
+          git remote set-url origin https://x-access-token:${{ env.token }}@github.com/${{ github.repository }}
+      - name: Bump version
+        run: npm version ${{ github.event.inputs.version-type }}
+      - name: Push changes
+        run: git push
       - name: Restore cache
         id: cache
         uses: actions/cache@v4
         with:
           path: ./node_modules
           key: modules-${{ hashFiles('package-lock.json') }}
-      - name: Bump version
-        run: npm version ${{ github.event.inputs.version-type }}
-      - name: Push changes
-        run: git push
       - name: Build
-        run: npm run 
+        run: npm run build
       - name: Publish
         run: npm publish --provenance --access public
         env:
