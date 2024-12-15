@@ -1,9 +1,16 @@
 name: Merge request
 
 on:
-  push:
-    branches:
-      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version'
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   install:
@@ -68,7 +75,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      # Setup .npmrc file to publish to npm
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -79,11 +85,36 @@ jobs:
         with:
           path: ./node_modules
           key: modules-${{ hashFiles('package-lock.json') }}
+      - name: Bump version
+        run: npm version ${{ github.event.inputs.version }}
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+      - name: Set up git
+        run: |
+          git config --global user.name 'github-actions'
+          git config --global user.email 'github-actions@github.com'
+      - name: Commit changes
+        run: |
+          git add .
+          git commit -m "Bump version to ${{ github.event.inputs.version }}"
+      - name: Push changes
+        run: git push
+        continue-on-error: true
+      - name: Check for push errors
+        if: failure()
+        run: |
+          echo "Push to remote repository failed. Please check the following:"
+          echo "1. Ensure the DEPLOY_KEY has the correct permissions."
+          echo "2. Verify the repository URL is correct."
+          echo "3. Check for branch protection rules or other repository restrictions."
+          exit 1
       - name: Build
         run: npm run 
-      - name: Semantic release
-        run: npx semantic-release
+      - name: Publish
+        run: npm publish --provenance --access public
         env:
-          GITHUB_TOKEN: ${{ secrets.DEPLOY_KEY }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
