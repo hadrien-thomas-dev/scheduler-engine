@@ -87,16 +87,18 @@ jobs:
         with:
           path: ./node_modules
           key: modules-${{ hashFiles('package-lock.json') }}
-      - name: Set up SSH
+      - name: Set up GitHub App Scheduler Engine authentication
+        id: auth
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-      - name: Set up git
+          echo "${{ secrets.APP_SCHEDULER_ENGINE_PRIVATE_KEY }}" | base64 -d > app-private-key.pem
+          jwt=$(ruby -r openssl -r base64 -e "puts JWT.encode({ iat: Time.now.to_i - 60, exp: Time.now.to_i + 600, iss: ${{ secrets.APP_SCHEDULER_ENGINE_ID }} }, OpenSSL::PKey::RSA.new(File.read('app-private-key.pem')), 'RS256')")
+          token=$(curl -s -X POST -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" https://api.github.com/app/installations/${{ secrets.APP_SCHEDULER_ENGINE_INSTALLATION_ID }}/access_tokens | jq -r .token)
+          echo "token=$token" >> $GITHUB_ENV
+      - name: Configure Git for App Scheduler Engine
         run: |
-          git config --global user.name 'github-actions'
-          git config --global user.email 'github-actions@github.com'
+          git config --global user.name "GitHub App Scheduler Engine"
+          git config --global user.email "github-app-scheduler-engine@example.com"
+          git remote set-url origin https://x-access-token:${{ env.token }}@github.com/${{ github.repository }}
       - name: Bump version
         run: npm version ${{ github.event.inputs.version-type }}
       - name: Push changes
