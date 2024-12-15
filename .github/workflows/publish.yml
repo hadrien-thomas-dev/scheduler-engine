@@ -86,11 +86,34 @@ jobs:
           path: ./node_modules
           key: modules-${{ hashFiles('package-lock.json') }}
       - name: Set up GitHub App Scheduler Engine authentication
-        id: auth
         run: |
+          # Décoder la clé privée
           echo "${{ secrets.APP_SCHEDULER_ENGINE_PRIVATE_KEY }}" | base64 -d > app-private-key.pem
-          jwt=$(ruby -r openssl -r base64 -e "puts JWT.encode({ iat: Time.now.to_i - 60, exp: Time.now.to_i + 600, iss: ${{ secrets.APP_SCHEDULER_ENGINE_ID }} }, OpenSSL::PKey::RSA.new(File.read('app-private-key.pem')), 'RS256')")
-          token=$(curl -s -X POST -H "Authorization: Bearer $jwt" -H "Accept: application/vnd.github+json" https://api.github.com/app/installations/${{ secrets.APP_SCHEDULER_ENGINE_INSTALLATION_ID }}/access_tokens | jq -r .token)
+
+          # Générer un JWT signé
+          header='{"alg":"RS256","typ":"JWT"}'
+          payload=$(cat <<-EOF
+          {
+            "iat": $(($(date +%s) - 60)),
+            "exp": $(($(date +%s) + 600)),
+            "iss": "${{ secrets.APP_SCHEDULER_ENGINE_ID }}"
+          }
+          EOF
+          )
+          base64_encode() {
+            echo -n "$1" | openssl base64 -e | tr -d '\n' | tr -- '+/' '-_' | tr -d '='
+          }
+          header_base64=$(base64_encode "$header")
+          payload_base64=$(base64_encode "$payload")
+          signature=$(echo -n "${header_base64}.${payload_base64}" | openssl dgst -sha256 -sign app-private-key.pem | openssl base64 -e | tr -d '\n' | tr -- '+/' '-_' | tr -d '=')
+          jwt="${header_base64}.${payload_base64}.${signature}"
+
+          # Obtenir le token d'accès
+          token=$(curl -s -X POST \
+            -H "Authorization: Bearer $jwt" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/app/installations/${{ secrets.APP_SCHEDULER_ENGINE_INSTALLATION_ID }}/access_tokens | jq -r .token)
+
           echo "token=$token" >> $GITHUB_ENV
       - name: Configure Git for App Scheduler Engine
         run: |
