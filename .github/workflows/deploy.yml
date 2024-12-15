@@ -3,8 +3,8 @@ name: Deploy
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version'
+      version-type:
+        description: 'Version type'
         required: true
         type: choice
         options:
@@ -71,8 +71,7 @@ jobs:
     needs: [ install, lint, test ]
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      id-token: write
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -97,18 +96,9 @@ jobs:
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
       - name: Bump version
-        run: npm version ${{ github.event.inputs.version }} -m "[workflow] Bump version to %s"
+        run: npm version ${{ github.event.inputs.version-type }}
       - name: Push changes
         run: git push
-        continue-on-error: true
-      - name: Check for push errors
-        if: failure()
-        run: |
-          echo "Push to remote repository failed. Please check the following:"
-          echo "1. Ensure the DEPLOY_KEY has the correct permissions."
-          echo "2. Verify the repository URL is correct."
-          echo "3. Check for branch protection rules or other repository restrictions."
-          exit 1
       - name: Build
         run: npm run 
       - name: Publish
