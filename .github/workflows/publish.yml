@@ -73,49 +73,30 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Set up GitHub App Scheduler Engine authentication
-        run: |
-          # Decode private key
-          echo "${{ secrets.APP_SCHEDULER_ENGINE_PRIVATE_KEY }}" | base64 -d > app-private-key.pem
-
-          # Generate signed json web token
-          header='{"alg":"RS256","typ":"JWT"}'
-          payload=$(cat <<-EOF
-          {
-            "iat": $(($(date +%s) - 60)),
-            "exp": $(($(date +%s) + 600)),
-            "iss": "${{ secrets.APP_SCHEDULER_ENGINE_ID }}"
-          }
-          EOF
-          )
-          base64_encode() {
-            echo -n "$1" | openssl base64 -e | tr -d '\n' | tr -- '+/' '-_' | tr -d '='
-          }
-          header_base64=$(base64_encode "$header")
-          payload_base64=$(base64_encode "$payload")
-          signature=$(echo -n "${header_base64}.${payload_base64}" | openssl dgst -sha256 -sign app-private-key.pem | openssl base64 -e | tr -d '\n' | tr -- '+/' '-_' | tr -d '=')
-          jwt="${header_base64}.${payload_base64}.${signature}"
-
-          # Get access token
-          token=$(curl -s -X POST \
-            -H "Authorization: Bearer $jwt" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/app/installations/${{ secrets.APP_SCHEDULER_ENGINE_INSTALLATION_ID }}/access_tokens | jq -r .token)
-
-          echo "token=$token" >> $GITHUB_ENV
+      - name: Create github app token
+        uses: actions/create-github-app-token@v1
+        id: app-token
+        with:
+          app-id: ${{ secrets.APP_SCHEDULER_ENGINE_ID }}
+          private-key: ${{ secrets.APP_SCHEDULER_ENGINE_PRIVATE_KEY }}
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          token: ${{ env.token }}
+          token: ${{ steps.app-token.outputs.token }}
+          ref: ${{ github.head_ref }}
+          persist-credentials: false
+      - name: Configure Git for App Scheduler Engine
+        run: |
+          echo "git remote set-url origin https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}"
+          git config --global user.name "GitHub App Scheduler Engine"
+          git config --global user.email "github-app-scheduler-engine@example.com"
+          git remote set-url origin https://x-access-token:${{ steps.app-token.outputs.token }}@github.com/${{ github.repository }}
+      
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          registry-url: 'https://registry.npmjs.org'      
-      - name: Configure Git for App Scheduler Engine
-        run: |
-          git config --global user.name "GitHub App Scheduler Engine"
-          git config --global user.email "github-app-scheduler-engine@example.com"
-          git remote set-url origin https://x-access-token:${{ env.token }}@github.com/${{ github.repository }}
+          registry-url: 'https://registry.npmjs.org'
       - name: Bump version
         run: npm version ${{ github.event.inputs.version-type }}
       - name: Push changes
