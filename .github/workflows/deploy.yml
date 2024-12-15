@@ -1,4 +1,4 @@
-name: Merge request
+name: Deploy
 
 on:
   workflow_dispatch:
