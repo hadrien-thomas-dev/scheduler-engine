@@ -67,6 +67,7 @@ jobs:
         run: npm run testm
 
   deploy:
+    name: Deploy
     needs: [ install, lint, test ]
     runs-on: ubuntu-latest
     permissions:
@@ -85,8 +86,6 @@ jobs:
         with:
           path: ./node_modules
           key: modules-${{ hashFiles('package-lock.json') }}
-      - name: Bump version
-        run: npm version ${{ github.event.inputs.version }}
       - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
@@ -97,10 +96,12 @@ jobs:
         run: |
           git config --global user.name 'github-actions'
           git config --global user.email 'github-actions@github.com'
+      - name: Bump version
+        run: npm version ${{ github.event.inputs.version }}
       - name: Commit changes
         run: |
           git add .
-          git commit -m "Bump version to ${{ github.event.inputs.version }}"
+          git commit -m "[workflow] Bump version to ${{ github.event.inputs.version }}"
       - name: Push changes
         run: git push
         continue-on-error: true
