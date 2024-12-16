@@ -72,6 +72,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      id-token: write
     steps:
       - name: Create github app token
         uses: actions/create-github-app-token@v1
