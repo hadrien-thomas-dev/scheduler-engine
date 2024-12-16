@@ -4,7 +4,7 @@
   "description": "An engine to build calendars",
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com/hadrien-thomas-dev/scheduler-engine.git"
+    "url": "git+ssh://git@github.com/hadrien-thomas-dev/scheduler-engine"
   },
   "author": "Hadrien Thomas <hadrien.thomas.dev@gmail.com>",
   "license": "MIT",
