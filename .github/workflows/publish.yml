@@ -99,12 +99,8 @@ jobs:
         run: npm version ${{ github.event.inputs.version-type }}
       - name: Push changes
         run: git push
-      - name: Restore cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: ./node_modules
-          key: modules-${{ hashFiles('package-lock.json') }}
+      - name: Reinstall dependencies because of the version bump
+        run: npm ci
       - name: Build
         run: npm run build
       - name: Publish
