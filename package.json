@@ -1,6 +1,6 @@
 {
   "name": "@hadrien.thomas/scheduler-engine",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "An engine to build calendars",
   "repository": {
     "type": "git",
