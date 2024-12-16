@@ -70,8 +70,6 @@ jobs:
     name: Publish to npm
     needs: [ install, lint, test ]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Create github app token
         uses: actions/create-github-app-token@v1
@@ -99,12 +97,8 @@ jobs:
         run: npm version ${{ github.event.inputs.version-type }}
       - name: Push changes
         run: git push
-      - name: Restore cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: ./node_modules
-          key: modules-${{ hashFiles('package-lock.json') }}
+      - name: Reinstall dependencies because of the version bump
+        run: npm ci
       - name: Build
         run: npm run build
       - name: Publish
